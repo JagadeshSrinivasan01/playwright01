@@ -1,0 +1,56 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [ main, master, testGitActions ]
+  pull_request:
+    branches: [ main, master, testGitActions ]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        
+    - name: Install dependencies
+      run: |
+        npm install
+        chmod +x ./node_modules/.bin/playwright
+        npx playwright install --with-deps
+
+    - name: Install Allure
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y default-jre
+        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
+      
+    - name: Run Playwright tests
+      run: npx playwright test --reporter=list,allure-playwright
+      
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
+        
+    - name: Generate Allure Report
+      if: always()
+      run: npm run report
+      
+    - name: Upload Allure Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-report
+        path: allure-report/
+        retention-days: 30
